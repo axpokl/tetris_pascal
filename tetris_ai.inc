@@ -289,7 +289,7 @@ var
   aictsit, aictposx: shortint;
 begin
   //writeln();
-  aimsit := 0;;
+  aimsit := 0;
   //当方块最大旋转小于方块最大旋转常量时做
   while aimsit < aiaksit[aik2next[aidepth].knd] do
   begin
@@ -392,8 +392,6 @@ begin
   aigo := 0;
   //初始化尝试方块
   aik2next[aidepth] := aiknext[aidepth];
-  //if aidepth=2 then aik2next[3].knd:=0;
-  //if aidepth=3 then aik2next[4].knd:=0;
   //如果方块种类为零
   if aik2next[aidepth].knd = 0 then
   begin
@@ -416,8 +414,8 @@ begin
     //直接取结果
     aigo := aicalc(aidepth);
 end;
-//初始化盘面
 
+//初始化盘面
 procedure ainew2();
 begin
   //设置满行

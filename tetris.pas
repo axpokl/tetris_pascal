@@ -28,6 +28,8 @@ const
 var
   sz: shortint;
   //每格大小
+  bdsz: shortint;
+  //边框大小
 var
   i, j, k, l, m, n: longint;
   b: boolean;
@@ -45,7 +47,7 @@ var
   gamet, stept, lastt: longword;
   //新局时间，单步时间，下落时间，AI时间
   downt, leftt, rightt: longword;
-  oldt, framet:longword;
+  oldt, framet: longword;
   aps: real;
   //手速
 
@@ -68,6 +70,42 @@ var
 var
   bmp: array[1..8] of pbitmap;
 
+var
+  kai: boolean = false;
+
+function badk(aidepth: shortint): shortint;
+var
+  badki, badc, badci: longint;
+begin
+  //初始化结果
+  badc := 0;
+  //初始化尝试方块
+  aik2next[aidepth] := aiknext[aidepth];
+  //厉遍7种方块
+  for badki := 1 to 7 do
+  begin
+    //重新初始化尝试方块
+    aik2next[aidepth].knd := badki;
+    aik2next[aidepth].sit := 1;
+    aik2next[aidepth].posx := wbd div 2 + 1;
+    aik2next[aidepth].posy := hbd - 1;
+    badci := aicalc(aidepth);
+    if badci > badc then
+    begin
+      badc := badci;
+      badk := badki;
+    end;
+  end;
+end;
+
+function rndk(): shortint;
+begin
+  if ksz then
+    rndk := Random(2) + 3
+  else
+    rndk := Random(7) + 1;
+end;
+
 procedure getk();
   //新方块
 begin
@@ -76,10 +114,7 @@ begin
   for i := 1 to depthm - 1 do
     aiknext[i] := aiknext[i + 1];
   //方块序列前移
-  if ksz then
-    aiknext[depthm].knd := Random(2) + 3
-  else
-    aiknext[depthm].knd := Random(7) + 1;
+  aiknext[depthm].knd := rndk();
   aiknext[depthm].sit := 1;
   aiknext[depthm].posx := wbd div 2 + 1;
   aiknext[depthm].posy := hbd - 1;
@@ -223,6 +258,11 @@ begin
   Ln := Ln + Erase();
   //消行并更新行数
   getk();
+  if kai then
+  begin
+    aidepthc := 1;
+    aiknext[1].knd := badk(1);
+  end;
   //获取新方块
   aps := 1000 / (((gettime - gamet + 1) / ksum));
   //计算手速
@@ -240,8 +280,8 @@ begin
   if stickb = true then
   //如果能塞入则移动
   begin
-    aiknext[1].knd  := knd;
-    aiknext[1].sit  := sit;
+    aiknext[1].knd := knd;
+    aiknext[1].sit := sit;
     aiknext[1].posx := posx;
     aiknext[1].posy := posy;
   end;
@@ -345,11 +385,11 @@ procedure drawk(x, y: shortint; c: shortint);
   //绘制方块
 begin
   if (c <= 0) then
-    bar(sz * (x - 1), sz * (hbd - y), sz - 1, sz - 1, ck[c], ck[c])
+    bar(sz * (x -1) , sz * (hbd - y), sz - bdsz, sz - bdsz, ck[c], ck[c])
   else if bmpb then
     drawbmp(bmp[c], 0, 0, 16, 16, sz * (x - 1), sz * (hbd - y), sz, sz)
   else
-    bar(sz * (x - 1), sz * (hbd - y), sz - 1, sz - 1, white, ck[c]);
+    bar(sz * (x -1) , sz * (hbd - y), sz - bdsz, sz - bdsz, white, ck[c]);
 end;
 
 procedure drawt(s: string; Pos: shortint; c: longword);
@@ -375,19 +415,20 @@ begin
     for j := 1 to hbd do
       drawk(i, j, bddraw[i, j]);
   //绘制盘面方块
-  for k := 2 to depthm do
-    with aiknext[k] do
-    begin
-      for i := -2 to 1 do
-        for j := -1 to 1 do
-          if pce[knd, sit, - 1 - j, i] then
-            drawk(wbd + 4 + i, hbd - 2 + j - k * 3, knd)
-      else
-        drawk(wbd + 4 + i, hbd - 2 + j - k * 3, - 1);
-      //绘制next区域
-      drawt('next ' + i2s(k - 1), 2 + k * 3, ck[knd]);
-      //绘制next文字
-    end;
+  if kai = false then
+    for k := 2 to depthm do
+      with aiknext[k] do
+      begin
+        for i := -2 to 1 do
+          for j := -1 to 1 do
+            if pce[knd, sit, - 1 - j, i] then
+              drawk(wbd + 4 + i, hbd - 2 + j - k * 3, knd)
+        else
+          drawk(wbd + 4 + i, hbd - 2 + j - k * 3, - 1);
+        //绘制next区域
+        drawt('next ' + i2s(k - 1), 2 + k * 3, ck[knd]);
+        //绘制next文字
+      end;
   drawt('Game ' + i2s(sum), 1, ck[sum mod 7 + 1]);
   drawt('Score ' + r2s(aln), 2, ck[sum mod 7 + 1]);
   drawt('Level ' + r2s(lv), 3, ck[Trunc(lv) mod 7 + 1]);
@@ -405,7 +446,7 @@ procedure SetSize(size: shortint);
 begin
   winb := false;
   sz := size;
-  if not(IsWin()) then
+  if not (IsWin()) then
     CreateWin((wbd + 6) * sz, hbd * sz, black, black);
   display.SetSize((wbd + 6) * sz, hbd * sz);
   //建立窗口
@@ -432,8 +473,8 @@ procedure init();
 begin
   Randomize;
   SetSize(25);
-  framet:=30;
-  oldt:=gettime;
+  framet := 30;
+  oldt := gettime;
   //初始化随机数发生器
   loadbmps();
   ainew2();
@@ -449,125 +490,138 @@ begin
   init();
   //初始化程序
   repeat
-  //主循环
-  if aion > 0 then
-  //判断AI是否打开
-  begin
-    ai();
-    if dead then
-      New();
-    if aion=1 then drawbd();
-  end;
-  //aion
-//  checkmusic();
-  if isnextmsg then
+    //主循环
+    if aion > 0 then
+    //判断AI是否打开
     begin
-    if iskey() then
-    //判断是否按键
-      begin
-      key := getkey();
-      //获取按键
-      case key of
-        k_1:
-          if aion=1 then aion := 0 else aion:=1;
-        k_2:
-          if aion=2 then aion := 0 else aion:=2;
-        else
-          aion := 0;
-        end;
-      case key of
-        k_left:
-          Left();
-        k_right:
-          Right();
-        k_down:
-          down();
-        k_up:
-          up();
-        96:
-          up2();
-        k_space:
-          space();
-        k_enter:
-          if dead then
-            New()
-          else
-            ai();
-        k_3:
-          aidepthc := aidepthc mod depthm + 1;
-        k_4:
-          soundon := not (soundon);
-        k_5:
-          musicon := not (musicon);
-        k_9:
-          bmpb := not (bmpb);
-        107:
-          SetSize(min(sz + 2,64));
-        109:
-          SetSize(max(sz - 2,1));
-        187:
-          SetSize(min(sz + 2,64));
-        189:
-          SetSize(max(sz - 2,1));
-        k_C:
-          Clear();
-        k_H:
-          High();
-        k_J:
-          junk();
-        k_P:
-          pause := not (pause);
-        k_R:
-          New();
-        k_W:
-          setbdsize(wbd, max(hbd - 1,4));
-        k_A:
-          setbdsize(max(wbd - 1,4), hbd);
-        k_S:
-          setbdsize(wbd, min(hbd + 1,64));
-        k_D:
-          setbdsize(min(wbd + 1,64), hbd);
-        k_Z:
-          ksz := not (ksz);
-        k_esc:
-          Halt();
-        else
-          if dead then
-            New();
-        end;
-      //根据按键执行操作
-      case key of
-        k_left:;
-        k_right:;
-        k_up:
-          playsound('up');
-        k_down:;
-        k_space:
-          playsound('space');
-        k_5:
-          if musicon then
-            replaymusic()
-          else
-            stopaudio(musiccur);
-          else
-            playsound('click');
-        end;//case
-      //根据按键播放声音
-      end;//key
-    if dead then
-      playsound('lost');
-    end;//msg
-  if (gettime > downt + stept) and not (pause) then
-  //判断当前时间是否已超过单步下落时间
-    down();
-  //取下一条消息
-  if aion<2 then sleep(1);
-//  if aion=2 then framet:=stept else framet:=15;
-  if (gettime > oldt + framet) then
-    begin
-    while gettime > oldt + framet do oldt:=oldt + framet;
-    drawbd();
+      ai();
+      if dead then
+        New();
+      if aion = 1 then
+        drawbd();
     end;
-  //重绘盘面
-  until iskey(k_esc) or not(iswin());
+    //aion
+    //  checkmusic();
+    if isnextmsg then
+    begin
+      if iskey() then
+      //判断是否按键
+      begin
+        key := getkey();
+        //获取按键
+        case key of
+          k_1:
+            if aion = 1 then
+              aion := 0
+            else
+              aion := 1;
+            k_2:
+            if aion = 2 then
+              aion := 0
+            else
+              aion := 2;
+            else
+              aion := 0;
+        end;
+        case key of
+          k_left:
+            Left();
+          k_right:
+            Right();
+          k_down:
+            down();
+          k_up:
+            up();
+          96:
+            up2();
+          k_space:
+            space();
+          k_enter:
+            if dead then
+              New()
+            else
+              ai();
+            k_3:
+            aidepthc := aidepthc mod depthm + 1;
+          k_4:
+            soundon := not (soundon);
+          k_5:
+            musicon := not (musicon);
+          k_9:
+            bmpb := not (bmpb);
+          107:
+            SetSize(Min(sz + 2, 64));
+          109:
+            SetSize(Max(sz - 2, 1));
+          187:
+            SetSize(Min(sz + 2, 64));
+          189:
+            SetSize(Max(sz - 2, 1));
+          k_C:
+            Clear();
+          k_H:
+            High();
+          k_J:
+            junk();
+          k_K:
+            kai := not (kai);
+          k_L:
+            bdsz:=1-bdsz;
+          k_P:
+            pause := not (pause);
+          k_R:
+            New();
+          k_W:
+            setbdsize(wbd, Max(hbd - 1, 4));
+          k_A:
+            setbdsize(Max(wbd - 1, 4), hbd);
+          k_S:
+            setbdsize(wbd, Min(hbd + 1, 64));
+          k_D:
+            setbdsize(Min(wbd + 1, 64), hbd);
+          k_Z:
+            ksz := not (ksz);
+          k_esc:
+            Halt();
+          else
+            if dead then
+              New();
+        end;
+        //根据按键执行操作
+        case key of
+          k_left:;
+          k_right:;
+          k_up:
+            playsound('up');
+          k_down:;
+          k_space:
+            playsound('space');
+          k_5:
+            if musicon then
+              replaymusic()
+            else
+              stopaudio(musiccur);
+            else
+              playsound('click');
+        end;//case
+        //根据按键播放声音
+      end;  //key
+      if dead then
+        playsound('lost');
+    end;//msg
+    if (gettime > downt + stept) and not (pause) then
+      //判断当前时间是否已超过单步下落时间
+      down();
+    //取下一条消息
+    if aion < 2 then
+      Sleep(1);
+    //  if aion=2 then framet:=stept else framet:=15;
+    if (gettime > oldt + framet) then
+    begin
+      while gettime > oldt + framet do
+        oldt := oldt + framet;
+      drawbd();
+    end;
+    //重绘盘面
+  until iskey(k_esc) or not (iswin());
 end.
